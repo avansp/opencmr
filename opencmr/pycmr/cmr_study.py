@@ -108,18 +108,18 @@ class CMRStudy:
             series_iuid = dcm.SeriesInstanceUID
             if series_iuid not in dd['Series']:
                 dd['Series'][series_iuid] = {s: cls.get_tag(dcm, s) for s in cls.SERIES_TAGS}
-                dd['Series']['Instances'] = {}
+                dd['Series'][series_iuid]['Instances'] = {}
                 if verbose:
                     print('Found new series: {} ({})'.format(series_iuid, dcm.SeriesDescription))
 
             # add new instance
             sop_iuid = dcm.SOPInstanceUID
-            assert sop_iuid not in dd['Series']['Instances'], "Duplicate SOPInstanceUID is found!!"
+            assert sop_iuid not in dd['Series'][series_iuid]['Instances'], "Duplicate SOPInstanceUID is found!!"
 
             new_instance = {s: cls.get_tag(dcm, s) for s in cls.INSTANCE_TAGS}
             new_instance['Filename'] = f.replace(os.path.join(folder_name, ''), '')
 
-            dd['Series']['Instances'][dcm.SOPInstanceUID] = new_instance
+            dd['Series'][series_iuid]['Instances'][dcm.SOPInstanceUID] = new_instance
 
         # create & return instance
         return cls(_source=folder_name, _study_instance_uid=study_iuid, _dcmdir=dd)
@@ -155,3 +155,21 @@ class CMRStudy:
 
         return val
 
+    def is_empty(self):
+        return len(self.dcmdir)==0
+
+    def __repr__(self):
+        if self.is_empty():
+            return "An empty CMRStudy"
+
+        message = "CMRStudy from: {}\n".format(self.source)
+        for t in self.STUDY_TAGS:
+            message += "{}: {}\n".format(t, self.dcmdir[t])
+
+        message += "Series:\n"
+        for i, s in enumerate(self.dcmdir['Series']):
+            message += "{:3d}. SeriesInstanceUID: {}\n".format(i+1, s)
+            message += "     SeriesDescription: {}\n".format(self.dcmdir['Series'][s]['SeriesDescription'])
+            message += "     Number of images: {}\n".format(len(self.dcmdir['Series'][s]['Instances']))
+
+        return message
